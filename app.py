@@ -16,12 +16,10 @@ def clean_full():
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
 
-    # ✅ KEEP header — do NOT remove it
 
-    # ❌ Only remove the "Contact Us" <li> from the header nav
-    contact_us_menu = soup.find('li', {'id': 'menu-item-24'})
-    if contact_us_menu:
-        contact_us_menu.decompose()
+    nav_bar = soup.find('nav', class_='main-nav')
+    if nav_bar:
+        nav_bar.decompose()
 
     # ✅ Keep all other content (body, footer, layout)
     head = soup.find('head')
