@@ -7,7 +7,6 @@ app = Flask(__name__)
 @app.route('/')
 def home():
     return '''
-        <h2>Optimally Cleaned Page (No Header/Footer)</h2>
         <iframe src="/clean-full" width="100%" height="3500" style="border:none;"></iframe>
     '''
 
