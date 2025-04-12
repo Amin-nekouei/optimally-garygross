@@ -7,7 +7,7 @@ app = Flask(__name__)
 @app.route('/')
 def home():
     return '''
-        <iframe src="/clean-full" width="100%" height="3500" style="border:none;"></iframe>
+        <iframe src="/clean-full" width="100%" height="2800" style="border:none;"></iframe>
     '''
 
 @app.route('/clean-full')
