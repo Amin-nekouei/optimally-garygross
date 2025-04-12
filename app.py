@@ -19,7 +19,8 @@ def clean_full():
     # Remove header and footer from the soup
     if soup.find('header'):
         soup.find('header').decompose()
-
+    if soup.find('footer'):
+        soup.find('footer').decompose()
 
     # Keep head as-is
     head = soup.find('head')
