@@ -8,7 +8,6 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
-    # صفحه تست اصلی -> iframe از نسخه تمیز Optimally
     return '''
         <!doctype html>
         <html lang="en">
@@ -44,7 +43,6 @@ def clean_full():
     response.raise_for_status()
     soup = BeautifulSoup(response.text, 'html.parser')
 
-    # حذف منوی اصلی
     nav_bar = soup.find('nav', class_='main-nav')
     if nav_bar:
         nav_bar.decompose()
@@ -52,13 +50,13 @@ def clean_full():
     head = soup.find('head')
     body = soup.find('body')
 
-    # اگر head/body پیدا نشدند، بسازیم
+
     if head is None:
         head = soup.new_tag("head")
     if body is None:
         body = soup.new_tag("body")
 
-    # اضافه کردن اسکریپت AOS اگر لازم است
+  
     animation_script = soup.new_tag(
         "script",
         src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"
@@ -85,7 +83,6 @@ GMG_URL = "https://gmg.me/705075"
 
 @app.route('/gmg')
 def gmg_home():
-    # صفحه تست -> iframe از نسخه تمیز GMG
     return """
     <!doctype html>
     <html lang="en">
@@ -127,7 +124,6 @@ def gmg_clean():
 
     soup = BeautifulSoup(resp.text, "html.parser")
 
-    # اگر خواستی می‌تونی هدر و فوترش رو حذف کنی:
     # header = soup.find("header", class_="welcome-header")
     # if header:
     #     header.decompose()
@@ -143,7 +139,6 @@ def gmg_clean():
     if body is None:
         body = soup.new_tag("body")
 
-    # Override استایل‌های html/body که توی GMG height:100% و display:table و ... گذاشته
     override_style = soup.new_tag("style")
     override_style.string = """
     html, body {
@@ -158,7 +153,10 @@ def gmg_clean():
 
     html = f"<!doctype html>\n<html lang='en'>\n{str(head)}\n{str(body)}\n</html>"
     return Response(html, mimetype="text/html")
-
+    
+@app.route('/health')
+def health():
+    return "OK", 200
 
 if __name__ == '__main__':
     app.run(debug=True)
