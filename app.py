@@ -1,10 +1,13 @@
 from flask import Flask, Response
 import requests
 from bs4 import BeautifulSoup
+from urllib.parse import urljoin
 
 app = Flask(__name__)
 
-# --------- 1) صفحه Optimally (Gary Gross)  --------- #
+# ============================================================================
+# 1) HOMEPAGE → loads Optimally (Gary Gross) inside an iframe
+# ============================================================================
 
 @app.route('/')
 def home():
@@ -36,6 +39,11 @@ def home():
     '''
 
 
+# ============================================================================
+# 2) Proxy for Optimally page (Gary Gross)
+# Removes navigation and adds AOS animations
+# ============================================================================
+
 @app.route('/clean-full')
 def clean_full():
     url = "https://optimally.com/garygross/"
@@ -43,26 +51,23 @@ def clean_full():
     response.raise_for_status()
     soup = BeautifulSoup(response.text, 'html.parser')
 
+    # Remove the main nav bar
     nav_bar = soup.find('nav', class_='main-nav')
     if nav_bar:
         nav_bar.decompose()
 
-    head = soup.find('head')
-    body = soup.find('body')
+    # Ensure head/body exist
+    head = soup.find('head') or soup.new_tag("head")
+    body = soup.find('body') or soup.new_tag("body")
 
-
-    if head is None:
-        head = soup.new_tag("head")
-    if body is None:
-        body = soup.new_tag("body")
-
-  
+    # Add AOS animation support
     animation_script = soup.new_tag(
         "script",
         src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"
     )
     init_script = soup.new_tag("script")
     init_script.string = "AOS.init();"
+
     body.append(animation_script)
     body.append(init_script)
 
@@ -76,9 +81,12 @@ def clean_full():
     return Response(html, mimetype='text/html')
 
 
-# --------- 2) صفحه GMG (Tax Credit Calculator)  --------- #
+# ============================================================================
+# 3) GMG TAX CALCULATOR PAGE (Iframe wrapper)
+# ============================================================================
 
 GMG_URL = "https://gmg.me/705075"
+GMG_BASE = "https://gmg.me"
 
 
 @app.route('/gmg')
@@ -117,6 +125,10 @@ def gmg_home():
     """
 
 
+# ============================================================================
+# 4) GMG CLEAN HTML (Fix relative CSS/JS paths + preserve full layout)
+# ============================================================================
+
 @app.route('/gmg-clean')
 def gmg_clean():
     resp = requests.get(GMG_URL, headers={"User-Agent": "Mozilla/5.0"})
@@ -124,21 +136,25 @@ def gmg_clean():
 
     soup = BeautifulSoup(resp.text, "html.parser")
 
-    # header = soup.find("header", class_="welcome-header")
-    # if header:
-    #     header.decompose()
-    # footer = soup.find("footer", class_="welcome-footer")
-    # if footer:
-    #     footer.decompose()
+    # Ensure head/body exist
+    head = soup.find("head") or soup.new_tag("head")
+    body = soup.find("body") or soup.new_tag("body")
 
-    head = soup.find("head")
-    body = soup.find("body")
+    # Fix relative paths for CSS, JS, IMG → convert to absolute URLs
+    for tag in soup.find_all(["link", "script", "img"]):
+        attr = "href" if tag.name == "link" else "src"
+        url = tag.get(attr)
+        if not url:
+            continue
 
-    if head is None:
-        head = soup.new_tag("head")
-    if body is None:
-        body = soup.new_tag("body")
+        # Skip if already absolute
+        if url.startswith("http://") or url.startswith("https://") or url.startswith("//"):
+            continue
 
+        # Convert relative → absolute
+        tag[attr] = urljoin(GMG_BASE, url)
+
+    # Override styling to avoid layout breakdown inside iframe
     override_style = soup.new_tag("style")
     override_style.string = """
     html, body {
@@ -153,10 +169,20 @@ def gmg_clean():
 
     html = f"<!doctype html>\n<html lang='en'>\n{str(head)}\n{str(body)}\n</html>"
     return Response(html, mimetype="text/html")
-    
+
+
+# ============================================================================
+# 5) HEALTH CHECK ENDPOINT (Required for Render Uptime)
+# ============================================================================
+
 @app.route('/health')
 def health():
     return "OK", 200
+
+
+# ============================================================================
+# 6) LOCAL DEBUG MODE
+# ============================================================================
 
 if __name__ == '__main__':
     app.run(debug=True)
