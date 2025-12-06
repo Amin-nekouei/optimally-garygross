@@ -134,27 +134,25 @@ def gmg_clean():
     resp = requests.get(GMG_URL, headers={"User-Agent": "Mozilla/5.0"})
     resp.raise_for_status()
 
-    soup = BeautifulSoup(resp.text, "html.parser")
+    # --- 1) اول HTML خام را بگیریم
+    html = resp.text
 
-    # Ensure head/body exist
+    # --- 2) همه‌ی مسیرهای نسبی حساس را به gmg.me وصل کنیم
+    html = html.replace('"/activate/', '"https://gmg.me/activate/')
+    html = html.replace("'/activate/", "'https://gmg.me/activate/")
+
+    html = html.replace('"/client/hi/activate/', '"https://gmg.me/client/hi/activate/')
+    html = html.replace("'/client/hi/activate/", "'https://gmg.me/client/hi/activate/")
+
+    html = html.replace('"/api/gmg/', '"https://gmg.me/api/gmg/')
+    html = html.replace("'/api/gmg/', "'https://gmg.me/api/gmg/")
+
+    # --- 3) بعدش با BeautifulSoup استایل‌هام را دستکاری کنیم (مثل قبل)
+    soup = BeautifulSoup(html, "html.parser")
+
     head = soup.find("head") or soup.new_tag("head")
     body = soup.find("body") or soup.new_tag("body")
 
-    # Fix relative paths for CSS, JS, IMG → convert to absolute URLs
-    for tag in soup.find_all(["link", "script", "img"]):
-        attr = "href" if tag.name == "link" else "src"
-        url = tag.get(attr)
-        if not url:
-            continue
-
-        # Skip if already absolute
-        if url.startswith("http://") or url.startswith("https://") or url.startswith("//"):
-            continue
-
-        # Convert relative → absolute
-        tag[attr] = urljoin(GMG_BASE, url)
-
-    # Override styling to avoid layout breakdown inside iframe
     override_style = soup.new_tag("style")
     override_style.string = """
     html, body {
@@ -167,8 +165,9 @@ def gmg_clean():
     """
     head.append(override_style)
 
-    html = f"<!doctype html>\n<html lang='en'>\n{str(head)}\n{str(body)}\n</html>"
-    return Response(html, mimetype="text/html")
+    final_html = f"<!doctype html>\n<html lang='en'>\n{str(head)}\n{str(body)}\n</html>"
+    return Response(final_html, mimetype="text/html")
+
 
 
 # ============================================================================
