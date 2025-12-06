@@ -153,7 +153,6 @@ def gmg_clean():
     """
     head.append(override_style)
 
-    # 🔥 این اسکریپت رفتار همه‌ی دکمه‌های saveDetails را عوض می‌کند
     custom_script = soup.new_tag("script")
     custom_script.string = """
     document.addEventListener('DOMContentLoaded', function () {
@@ -171,7 +170,10 @@ def gmg_clean():
     final_html = f"<!doctype html>\n<html lang='en'>\n{str(head)}\n{str(body)}\n</html>"
     return Response(final_html, mimetype="text/html")
 
-
+@app.route("/activate/gmg-clean")
+def activate_gmg_clean():
+    # هر کلیکی که به این آدرس بیاد، مستقیم میره به GMG
+    return redirect("https://gmg.me/activate/705075", code=302)
 
 
 # ============================================================================
