@@ -140,7 +140,37 @@ def gmg_clean():
     head = soup.find("head") or soup.new_tag("head")
     body = soup.find("body") or soup.new_tag("body")
 
-    # استایل برای درست شدن داخل iframe
+    # 🔹 دکمه‌های saveDetails را به لینک با href ثابت تبدیل می‌کنیم
+    for btn in soup.select(".saveDetails"):
+        # لینک جدید می‌سازیم
+        link = soup.new_tag("a")
+
+        # هدف همه دکمه‌ها:
+        link["href"] = "https://gmg.me/activate/705075"
+
+        # کلاس‌ها را نگه می‌داریم تا ظاهر دکمه‌ای حفظ شود
+        if btn.has_attr("class"):
+            link["class"] = btn["class"]
+
+        # id را هم اگر داشت نگه می‌داریم
+        if btn.has_attr("id"):
+            link["id"] = btn["id"]
+
+        # برای دسترسی‌پذیری
+        link["role"] = "button"
+
+        # استایل inline اگر داشت
+        if btn.has_attr("style"):
+            link["style"] = btn["style"]
+
+        # محتوای داخلی دکمه (آیکن، متن) را داخل لینک کپی می‌کنیم
+        inner_html = btn.decode_contents()
+        link.append(BeautifulSoup(inner_html, "html.parser"))
+
+        # جایگزین کردن دکمه با لینک
+        btn.replace_with(link)
+
+    # 🔹 استایل برای درست شدن داخل iframe
     override_style = soup.new_tag("style")
     override_style.string = """
     html, body {
@@ -153,27 +183,8 @@ def gmg_clean():
     """
     head.append(override_style)
 
-    custom_script = soup.new_tag("script")
-    custom_script.string = """
-    document.addEventListener('DOMContentLoaded', function () {
-      var btns = document.querySelectorAll('.saveDetails');
-      btns.forEach(function(btn) {
-        btn.onclick = function(e) {
-          e.preventDefault();
-          window.location.href = 'https://gmg.me/activate/705075';
-        };
-      });
-    });
-    """
-    body.append(custom_script)
-
     final_html = f"<!doctype html>\n<html lang='en'>\n{str(head)}\n{str(body)}\n</html>"
     return Response(final_html, mimetype="text/html")
-
-@app.route("/activate/gmg-clean")
-def activate_gmg_clean():
-    # هر کلیکی که به این آدرس بیاد، مستقیم میره به GMG
-    return redirect("https://gmg.me/activate/705075", code=302)
 
 
 # ============================================================================
