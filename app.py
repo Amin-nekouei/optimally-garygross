@@ -1,70 +1,53 @@
-from flask import Flask, Response
+from flask import Flask, Response, redirect, request
 import requests
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin
 
 app = Flask(__name__)
 
-# ============================================================================
-# 1) HOMEPAGE → loads Optimally (Gary Gross) inside an iframe
-# ============================================================================
+GMG_URL = "https://gmg.me/705075"
 
-@app.route('/')
+# -------------------------------------------------
+# Home → loads the Optimally proxy inside iframe
+# -------------------------------------------------
+@app.route("/")
 def home():
-    return '''
-        <!doctype html>
-        <html lang="en">
-        <head>
-            <meta charset="utf-8">
-            <title>Optimally Proxy</title>
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-            <style>
-                html, body {
-                    margin: 0;
-                    padding: 0;
-                    height: 100%;
-                }
-                iframe {
-                    width: 100%;
-                    height: 2800px;
-                    border: none;
-                    display: block;
-                }
-            </style>
-        </head>
-        <body>
-            <iframe src="/clean-full"></iframe>
-        </body>
-        </html>
-    '''
+    return """
+    <!doctype html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Optimally Proxy</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+            html, body { margin: 0; padding: 0; height: 100%; }
+            iframe { width: 100%; height: 2800px; border: none; display: block; }
+        </style>
+    </head>
+    <body>
+        <iframe src="/clean-full"></iframe>
+    </body>
+    </html>
+    """
 
-
-# ============================================================================
-# 2) Proxy for Optimally page (Gary Gross)
-# Removes navigation and adds AOS animations
-# ============================================================================
-
-@app.route('/clean-full')
+# -------------------------------------------------
+# Optimally cleaned version
+# -------------------------------------------------
+@app.route("/clean-full")
 def clean_full():
     url = "https://optimally.com/garygross/"
     response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
     response.raise_for_status()
-    soup = BeautifulSoup(response.text, 'html.parser')
 
-    # Remove the main nav bar
-    nav_bar = soup.find('nav', class_='main-nav')
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    nav_bar = soup.find("nav", class_="main-nav")
     if nav_bar:
         nav_bar.decompose()
 
-    # Ensure head/body exist
-    head = soup.find('head') or soup.new_tag("head")
-    body = soup.find('body') or soup.new_tag("body")
+    head = soup.find("head") or soup.new_tag("head")
+    body = soup.find("body") or soup.new_tag("body")
 
-    # Add AOS animation support
-    animation_script = soup.new_tag(
-        "script",
-        src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"
-    )
+    animation_script = soup.new_tag("script", src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js")
     init_script = soup.new_tag("script")
     init_script.string = "AOS.init();"
 
@@ -78,18 +61,12 @@ def clean_full():
     {str(body)}
     </html>
     """
-    return Response(html, mimetype='text/html')
+    return Response(html, mimetype="text/html")
 
-
-# ============================================================================
-# 3) GMG TAX CALCULATOR PAGE (Iframe wrapper)
-# ============================================================================
-
-GMG_URL = "https://gmg.me/705075"
-GMG_BASE = "https://gmg.me"
-
-
-@app.route('/gmg')
+# -------------------------------------------------
+# GMG iframe loader
+# -------------------------------------------------
+@app.route("/gmg")
 def gmg_home():
     return """
     <!doctype html>
@@ -99,78 +76,48 @@ def gmg_home():
         <title>GMG Proxy</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
-            html, body {
-                margin: 0;
-                padding: 0;
-                height: 100%;
-            }
-            .frame-wrapper {
-                width: 100%;
-                height: 100vh;
-            }
-            iframe {
-                width: 100%;
-                height: 100%;
-                border: none;
-                display: block;
-            }
+            html, body { margin: 0; padding: 0; height: 100%; }
+            iframe { width: 100%; height: 100vh; border: none; }
         </style>
     </head>
     <body>
-        <div class="frame-wrapper">
-            <iframe src="/gmg-clean" loading="lazy"></iframe>
-        </div>
+        <iframe src="/gmg-clean" loading="lazy"></iframe>
     </body>
     </html>
     """
 
-
-# ============================================================================
-# 4) GMG CLEAN HTML (Fix relative CSS/JS paths + preserve full layout)
-# ============================================================================
-
-@app.route('/gmg-clean')
+# -------------------------------------------------
+# GMG cleaned HTML + buttons rewritten
+# -------------------------------------------------
+@app.route("/gmg-clean")
 def gmg_clean():
     resp = requests.get(GMG_URL, headers={"User-Agent": "Mozilla/5.0"})
     resp.raise_for_status()
 
-    html = resp.text
-    soup = BeautifulSoup(html, "html.parser")
+    soup = BeautifulSoup(resp.text, "html.parser")
 
     head = soup.find("head") or soup.new_tag("head")
     body = soup.find("body") or soup.new_tag("body")
 
-    # 🔹 دکمه‌های saveDetails را به لینک با href ثابت تبدیل می‌کنیم
+    # Replace "saveDetails" buttons with static links
     for btn in soup.select(".saveDetails"):
-        # لینک جدید می‌سازیم
         link = soup.new_tag("a")
-
-        # هدف همه دکمه‌ها:
         link["href"] = "https://gmg.me/activate/705075"
+        link["role"] = "button"
 
-        # کلاس‌ها را نگه می‌داریم تا ظاهر دکمه‌ای حفظ شود
         if btn.has_attr("class"):
             link["class"] = btn["class"]
 
-        # id را هم اگر داشت نگه می‌داریم
         if btn.has_attr("id"):
             link["id"] = btn["id"]
 
-        # برای دسترسی‌پذیری
-        link["role"] = "button"
-
-        # استایل inline اگر داشت
         if btn.has_attr("style"):
             link["style"] = btn["style"]
 
-        # محتوای داخلی دکمه (آیکن، متن) را داخل لینک کپی می‌کنیم
         inner_html = btn.decode_contents()
         link.append(BeautifulSoup(inner_html, "html.parser"))
-
-        # جایگزین کردن دکمه با لینک
         btn.replace_with(link)
 
-    # 🔹 استایل برای درست شدن داخل iframe
     override_style = soup.new_tag("style")
     override_style.string = """
     html, body {
@@ -186,19 +133,40 @@ def gmg_clean():
     final_html = f"<!doctype html>\n<html lang='en'>\n{str(head)}\n{str(body)}\n</html>"
     return Response(final_html, mimetype="text/html")
 
+# -------------------------------------------------
+# Redirect all /activate/* links to GMG
+# -------------------------------------------------
+@app.route("/activate/<path:suffix>")
+def gmg_activate(suffix):
+    return redirect("https://gmg.me/activate/705075", code=302)
 
-# ============================================================================
-# 5) HEALTH CHECK ENDPOINT (Required for Render Uptime)
-# ============================================================================
+# -------------------------------------------------
+# Proxy for GMG Session API
+# -------------------------------------------------
+@app.route("/api/gmg/writeSession")
+def gmg_write_session():
+    target_url = "https://gmg.me/api/gmg/writeSession"
 
-@app.route('/health')
+    resp = requests.get(
+        target_url,
+        params=request.args,
+        headers={"User-Agent": "Mozilla/5.0"},
+        timeout=10,
+    )
+
+    return Response(
+        resp.content,
+        status=resp.status_code,
+        content_type=resp.headers.get("Content-Type", "application/json")
+    )
+
+# -------------------------------------------------
+# Healthcheck for Render
+# -------------------------------------------------
+@app.route("/health")
 def health():
     return "OK", 200
 
 
-# ============================================================================
-# 6) LOCAL DEBUG MODE
-# ============================================================================
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(debug=True)
