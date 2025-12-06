@@ -134,25 +134,13 @@ def gmg_clean():
     resp = requests.get(GMG_URL, headers={"User-Agent": "Mozilla/5.0"})
     resp.raise_for_status()
 
-    # --- 1) اول HTML خام را بگیریم
     html = resp.text
-
-    # --- 2) همه‌ی مسیرهای نسبی حساس را به gmg.me وصل کنیم
-    html = html.replace('"/activate/', '"https://gmg.me/activate/')
-    html = html.replace("'/activate/", "'https://gmg.me/activate/")
-
-    html = html.replace('"/client/hi/activate/', '"https://gmg.me/client/hi/activate/')
-    html = html.replace("'/client/hi/activate/", "'https://gmg.me/client/hi/activate/")
-
-    html = html.replace('"/api/gmg/', '"https://gmg.me/api/gmg/')
-    html = html.replace("'/api/gmg/', "'https://gmg.me/api/gmg/")
-
-    # --- 3) بعدش با BeautifulSoup استایل‌هام را دستکاری کنیم (مثل قبل)
     soup = BeautifulSoup(html, "html.parser")
 
     head = soup.find("head") or soup.new_tag("head")
     body = soup.find("body") or soup.new_tag("body")
 
+    # استایل برای درست شدن داخل iframe
     override_style = soup.new_tag("style")
     override_style.string = """
     html, body {
@@ -165,8 +153,24 @@ def gmg_clean():
     """
     head.append(override_style)
 
+    # 🔥 این اسکریپت رفتار همه‌ی دکمه‌های saveDetails را عوض می‌کند
+    custom_script = soup.new_tag("script")
+    custom_script.string = """
+    document.addEventListener('DOMContentLoaded', function () {
+      var btns = document.querySelectorAll('.saveDetails');
+      btns.forEach(function(btn) {
+        btn.onclick = function(e) {
+          e.preventDefault();
+          window.location.href = 'https://gmg.me/activate/705075';
+        };
+      });
+    });
+    """
+    body.append(custom_script)
+
     final_html = f"<!doctype html>\n<html lang='en'>\n{str(head)}\n{str(body)}\n</html>"
     return Response(final_html, mimetype="text/html")
+
 
 
 
