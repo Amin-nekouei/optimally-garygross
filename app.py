@@ -12,41 +12,7 @@ ASPIRE_URL = "https://workwithaspirepartners.com/id/netspan/"
 GMG_URL = "https://gmg.me/705075"
 
 
-def proxy_clean_page(url):
-    response = requests.get(url, headers=HEADERS, timeout=15)
-    response.raise_for_status()
-
-    soup = BeautifulSoup(response.text, "html.parser")
-
-    nav_bar = soup.find("nav", class_="main-nav")
-    if nav_bar:
-        nav_bar.decompose()
-
-    head = soup.find("head") or soup.new_tag("head")
-    body = soup.find("body") or soup.new_tag("body")
-
-    style = soup.new_tag("style")
-    style.string = """
-    html, body {
-        margin: 0 !important;
-        padding: 0 !important;
-        width: 100% !important;
-        min-height: 100% !important;
-        overflow: visible !important;
-    }
-    """
-    head.append(style)
-
-    return f"""
-    <!doctype html>
-    <html lang="en">
-    {str(head)}
-    {str(body)}
-    </html>
-    """
-
-
-def iframe_page(title, iframe_src, height="2800px"):
+def iframe_page(title, iframe_src, height="100vh"):
     return f"""
     <!doctype html>
     <html lang="en">
@@ -73,6 +39,19 @@ def iframe_page(title, iframe_src, height="2800px"):
     </body>
     </html>
     """
+
+
+def proxy_clean_page(url):
+    response = requests.get(url, headers=HEADERS, timeout=15)
+    response.raise_for_status()
+
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    nav_bar = soup.find("nav", class_="main-nav")
+    if nav_bar:
+        nav_bar.decompose()
+
+    return Response(str(soup), mimetype="text/html")
 
 
 @app.route("/")
@@ -111,41 +90,40 @@ def home():
 # -----------------------------
 @app.route("/optimally-page")
 def optimally_page():
-    return iframe_page("Optimally Proxy", "/optimally")
+    return iframe_page("Optimally Proxy", "/optimally", "2800px")
 
 
 @app.route("/optimally")
 def optimally_clean():
-    html = proxy_clean_page(OPTIMALLY_URL)
-    return Response(html, mimetype="text/html")
+    return proxy_clean_page(OPTIMALLY_URL)
 
 
 # -----------------------------
 # LegalShield
+# Redirect because proxy/iframe breaks assets
 # -----------------------------
 @app.route("/legalshield-page")
 def legalshield_page():
-    return iframe_page("LegalShield Proxy", "/legalshield")
+    return redirect(LEGALSHIELD_URL, code=302)
 
 
 @app.route("/legalshield")
-def legalshield_clean():
-    html = proxy_clean_page(LEGALSHIELD_URL)
-    return Response(html, mimetype="text/html")
+def legalshield_direct():
+    return redirect(LEGALSHIELD_URL, code=302)
 
 
 # -----------------------------
 # Aspire Partners
+# Redirect because iframe/proxy can cause errors
 # -----------------------------
 @app.route("/aspire-page")
 def aspire_page():
-    return iframe_page("Aspire Partners Proxy", "/aspire")
+    return redirect(ASPIRE_URL, code=302)
 
 
 @app.route("/aspire")
-def aspire_clean():
-    html = proxy_clean_page(ASPIRE_URL)
-    return Response(html, mimetype="text/html")
+def aspire_direct():
+    return redirect(ASPIRE_URL, code=302)
 
 
 # -----------------------------
@@ -153,7 +131,7 @@ def aspire_clean():
 # -----------------------------
 @app.route("/gmg")
 def gmg_home():
-    return iframe_page("GMG Proxy", "/gmg-clean", "100vh")
+    return iframe_page("GMG Proxy", "/gmg-clean")
 
 
 @app.route("/gmg-clean")
@@ -201,9 +179,6 @@ def gmg_write_session():
     )
 
 
-# -----------------------------
-# Health Check
-# -----------------------------
 @app.route("/health")
 def health():
     return "OK", 200
