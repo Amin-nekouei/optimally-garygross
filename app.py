@@ -62,7 +62,41 @@ def clean_full():
     </html>
     """
     return Response(html, mimetype="text/html")
+# -------------------------------------------------
+# legalshieldassociate.com
+# -------------------------------------------------
+@app.route("/legalshield")
+def clean_full():
+    url = "https://ggross.legalshieldassociate.com/"
+    response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
+    response.raise_for_status()
 
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    nav_bar = soup.find("nav", class_="main-nav")
+    if nav_bar:
+        nav_bar.decompose()
+
+    head = soup.find("head") or soup.new_tag("head")
+    body = soup.find("body") or soup.new_tag("body")
+
+    animation_script = soup.new_tag("script", src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js")
+    init_script = soup.new_tag("script")
+    init_script.string = "AOS.init();"
+
+    body.append(animation_script)
+    body.append(init_script)
+
+    html = f"""
+    <!doctype html>
+    <html lang="en">
+    {str(head)}
+    {str(body)}
+    </html>
+    """
+    return Response(html, mimetype="text/html")
+
+# -------------------------------------------------
 # -------------------------------------------------
 # GMG iframe loader
 # -------------------------------------------------
